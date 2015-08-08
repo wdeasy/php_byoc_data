@@ -1,2 +1,7 @@
-# php_byoc_data
-prints out sorted byoc data using php
+## Synopsis
+
+This script reads the byoc json and prints the sorted result.
+
+## Usage
+
+php byoc.php
