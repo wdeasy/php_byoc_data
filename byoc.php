@@ -71,7 +71,8 @@
       } elseif ($num < $UAC['end']) {
         $seat = build_seat($num, $UAC);
       } else {
-        $seat = "Unknown seat.";
+        $seat['seat'] = "Unknown seat.";
+        $seat['key'] = $num;
       }
       return $seat;
     }
