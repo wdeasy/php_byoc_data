@@ -1,4 +1,9 @@
 <?php
+    define("A", serialize (array ("aisle" => "A", "rows" => 74, "cols" => 10, "start" => -1, "end" => 740)));
+    define("B", serialize (array ("aisle" => "B", "rows" => 74, "cols" => 22, "start" => 739, "end" => 2638)));
+    define("C", serialize (array ("aisle" => "C", "rows" => 64, "cols" => 12, "start" => 2367, "end" => 3136)));
+    define("UAC", serialize (array ("aisle" => "UAC", "rows" => 12, "cols" => 10, "start" => 3136, "end" => 3256)));
+
     $url = 'https://registration.quakecon.org/?action=byoc_data&response_type=json';
     $content = file_get_contents($url);
     $json = json_decode($content, true);
@@ -12,7 +17,8 @@
         $clanhash   = $clanhandle[0];
         $handle = $clanhandle[1];
         $clan = null;
-        $seat = decode_seat($seathash);
+        $number = hash_convert($seathash);
+        $seat = get_seat($number);
 
         if ($clanhash != null) {
             $clan = $clans[$clanhash];
@@ -22,14 +28,14 @@
             $handle = "Reserved";
         }        
 
-        $seats[$seat] = array('clan' => $clan, 'handle' => $handle);
+        $seats[$seat['key']] = array('seat' => $seat['seat'], 'clan' => $clan, 'handle' => $handle);
     }
 
     ksort($seats);
 
     print "\n";
     foreach($seats as $key => $val) {
-        print $key;
+        print $val['seat'];
 
         if($val['clan'] != null) {
             print " " . $val['clan'];
@@ -38,7 +44,7 @@
         print " " . $val['handle'] . "\n";
     }
 
-    function decode_seat($num, $b=62) {
+    function hash_convert($num, $b=62) {
       $seat = '';
       $base='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       $limit = strlen($num);
@@ -46,56 +52,58 @@
       for($i=1;$i<$limit;$i++) {
         $res = $b * $res + strpos($base,$num[$i]);
       }
+      return $res;        
+    }
 
-      if ($res < 740) {
-
-        //ROW A
-        $pos = $res + 1;
-        $row = ceil($pos / 10);
-        $col = ($pos % 10);
-        if ($col == 0) {
-            $col = 10;
-        }
-        $seat = "A" . $row . "-" . sprintf('%02d',$col);
-
-      } elseif ($res < 2368) {
-
-        //ROW B
-        $pos = $res - (740 - 1);
-        $row = ceil($pos / 22);
-        $col = ($pos % 22);
-        if ($col == 0) {
-            $col = 22;
-        }
-        $seat = "B" . $row . "-" . sprintf('%02d',$col);
-
-     } elseif ($res < 3136) {
-
-        //ROW C
-        $pos = $res - (2368 - 1);
-        $row = ceil($pos / 12);
-        $col = ($pos % 12);
-        if ($col == 0) {
-            $col = 12;
-        }
-        $seat = "C" . $row . "-" . sprintf('%02d',$col);
-
-      } elseif ($res < 3256) {
-
-        //UAC
-        $pos = ($res - 3136);
-        $row = floor($pos / 10) + 1;
-        $col = floor($pos % 10) + 1;
-        $dig = 13 - $row + (10 - $col);
-        if ($col == 1) {
-            $dig = $dig + (2 * ($row - 1));
-        }        
-        $seat = "UAC-" . sprintf('%02d',$dig);
-
+    function get_seat($num) {
+      $A    = unserialize(A);
+      $B    = unserialize(B);
+      $C    = unserialize(C);
+      $UAC  = unserialize(UAC);
+      
+      $seat = '';
+      if ($num < $A['end']) {
+        $seat = build_seat($num, $A);
+      } elseif ($num < $B['end']) {
+        $seat = build_seat($num, $B);
+      } elseif ($num < $C['end']) {
+        $seat = build_seat($num, $C);
+      } elseif ($num < $UAC['end']) {
+        $seat = build_seat($num, $UAC);
       } else {
         $seat = "Unknown seat.";
       }
-
       return $seat;
+    }
+
+    function build_seat($num, $array) {
+        $seat = [];
+        if ($array['aisle'] == "UAC") {
+            $pos = ($num - $array['start']);
+            $row = floor($pos / $array['cols']) + 1;
+            $col = floor($pos % $array['cols']) + 1;
+            $dig = 13 - $row + ($array['cols'] - $col);
+            if ($col == 1) {
+                $dig = $dig + (2 * ($row - 1));
+            }        
+            $seat['seat'] = "UAC-" . sprintf('%02d',$dig);
+            $seat['key'] = "UAC-" . sprintf('%02d',$dig);
+            $seat['aisle'] = $array['aisle'];
+            $seat['row'] = $row;
+            $seat['col'] = $col;
+        } else {
+            $pos = $num - $array['start'];
+            $row = ceil($pos / $array['cols']);
+            $col = ($pos % $array['cols']);
+            if ($col == 0) {
+                $col = $array['cols'];
+            }
+            $seat['seat'] = $array['aisle'] . $row . "-" . sprintf('%02d',$col); 
+            $seat['key']  = $array['aisle'] . sprintf('%02d',$row) . "-" . sprintf('%02d',$col);
+            $seat['aisle'] = $array['aisle'];
+            $seat['row'] = $row;
+            $seat['col'] = $col;           
+        }
+        return $seat;        
     }
 ?>
